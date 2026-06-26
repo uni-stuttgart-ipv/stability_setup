@@ -1,0 +1,5 @@
+pyenv/
+__pycache__/
+*.pyc
+.env
+app/trial.py
