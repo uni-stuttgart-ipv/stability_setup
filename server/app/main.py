@@ -26,9 +26,10 @@ async def monitor_devices():
         if(len(devices)>0):
             for device_id, device in devices.items():
                 if now - device["last_seen"] > OFFLINE_THRESHOLD:
+                    if "online" in device and device["online"]:
+                        # print that the device is offline
+                        print(f"Device {device_id} is offline. Last seen at {device['last_seen']}")
                     device["online"] = False
-                    # print that the device is offline
-                    print(f"As it has passed the offline threshold device {device_id} is offline")
                 else:
                     device["online"] = True
 
@@ -146,6 +147,12 @@ async def set_device(device_id: str, payload: SetRequest):
     # curl -Method POST "http://127.0.0.1:8000/set/solar_simulator_01/" `
     #  -ContentType "application/json" `
     #  -Body '{"ch0":25,"ch1":80}'
+
+    if device_id not in devices:
+        return {
+            "status": "error",
+            "message": f"Device {device_id} not registered"
+        }
     
     ip = devices[device_id]   # FastAPI resolves ESP32 IP
 
@@ -195,6 +202,12 @@ async def heartbeat(data: Heartbeat):
 @app.get("/temperature/{device_id}")
 async def get_temperature(device_id: str):
 
+    if device_id not in devices:
+        return {
+            "status": "error",
+            "message": f"Device {device_id} not registered"
+        }
+    
     ip = devices[device_id]
 
     try:
