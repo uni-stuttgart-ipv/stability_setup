@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 .env
 app/trial.py
+app/influx_trial.py

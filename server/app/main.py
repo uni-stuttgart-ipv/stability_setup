@@ -29,8 +29,6 @@ async def monitor_devices():
                     device["online"] = False
                     # print that the device is offline
                     print(f"As it has passed the offline threshold device {device_id} is offline")
-                    # remove the device from the main devices list
-                    del devices[device_id]
                 else:
                     device["online"] = True
 
@@ -175,7 +173,7 @@ async def set_device(device_id: str, payload: SetRequest):
 
 # HEARTBEAT
 @app.post("/heartbeat")
-def heartbeat(data: Heartbeat):
+async def heartbeat(data: Heartbeat):
     if(data.device_id not in devices):
         print(f"Received heartbeat from unregistered device {data.device_id} with IP {data.ip} at {datetime.now(timezone.utc)}")
     else:
