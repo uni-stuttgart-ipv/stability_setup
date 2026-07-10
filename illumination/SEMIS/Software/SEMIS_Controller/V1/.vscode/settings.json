@@ -1,0 +1,21 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.espIdfPathWin": "C:\\Users\\aleja\\esp\\v5.5.2\\esp-idf",
+  "idf.pythonInstallPath": "C:\\Users\\aleja\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+  "idf.openOcdConfigs": [
+    "board/esp32c6-builtin.cfg"
+  ],
+  "idf.portWin": "COM9",
+  "idf.toolsPathWin": "C:\\Users\\aleja\\.espressif",
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32c6"
+  },
+  "clangd.path": "C:\\Espressif\\tools\\esp-clang\\esp-20.1.1_20250829\\esp-clang\\bin\\clangd.exe",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=c:\\Users\\SARVESH VAZARKAR\\Documents\\IPV\\SEMIS\\Software\\SEMIS_Controller\\V1\\build"
+  ],
+  "idf.flashType": "UART",
+  "idf.currentSetup": "C:\\esp\\v6.0.1\\esp-idf"
+}

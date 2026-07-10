@@ -1,0 +1,5 @@
+{
+    "idf.currentSetup": "C:\\Users\\aleja\\esp\\v5.5.2\\esp-idf",
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
+}
