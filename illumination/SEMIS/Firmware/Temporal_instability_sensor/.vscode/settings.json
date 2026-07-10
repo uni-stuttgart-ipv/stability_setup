@@ -13,5 +13,6 @@
         "~/.micropico-stubs/included"
     ],
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "idf.currentSetup": "C:\\esp\\v5.5.4\\esp-idf"
 }
