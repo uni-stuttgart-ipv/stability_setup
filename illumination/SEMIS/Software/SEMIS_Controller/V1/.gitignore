@@ -78,3 +78,5 @@ Desktop.ini
 *.sln.docstates # Visual Studio
 
 secrets.env # Environment variables file, should not be committed
+
+.vscode/settings.json
