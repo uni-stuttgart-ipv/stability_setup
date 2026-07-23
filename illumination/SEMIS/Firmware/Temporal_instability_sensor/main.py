@@ -13,9 +13,9 @@ def setup_csv(column_list, csv_file_name):
     f.write(','.join(column_list) + '\n')
     f.close()
 
-def write_to_csv(timestamp, measurement):
+def write_to_csv(timestamp, *measurements):
     with open(CSV_FILE, 'a') as f:
-        f.write(f"{timestamp},{measurement}\n")
+        f.write(f"{timestamp}," + ",".join(map(str, measurements)) + "\n")
 
 def set_color(r, g, b):
     np[0] = (r, g, b)  # RGB values 0–255
@@ -63,18 +63,24 @@ if __name__ == "__main__":
 
     adc = ADC(adc_pin)
 
-    set_color(0, 255, 0)  # Green
+    set_color(0, 100, 0)  # Green
 
     meas_max = 2000000 # 2V in uV
+    val_list = []
         
     while time.time() - start_time < total_meas_time:
         set_color(0, 0, 10)  # Blue
         if time.time() - last_meas_time >= time_between_meas or last_meas_time == start_time:
-            val = adc.read_uv() 
-            set_color(int((val * 10) / meas_max), 10, 0)  # Green
-            print(f"{time.time()} Measurement: {val} uV")
-            write_to_csv(time.time(), val)
+            for i in range(5):
+                val = adc.read_uv() 
+                val_list.append(val)
+                time.sleep(0.1)
+            
+            set_color(int((val_list[0] * 10) / meas_max), 10, 0)  # Green
+            print(f"{time.time()} Measurement: {val_list[0]}, {val_list[1]}, {val_list[2]}, {val_list[3]}, {val_list[4]} uV")
+            write_to_csv(time.time(), val_list[0], val_list[1], val_list[2], val_list[3], val_list[4])
             last_meas_time = time.time()
+            val_list = []
             time.sleep(time_between_meas-0.5) 
     
     write_to_csv(time.time(), "Measurement finished")
