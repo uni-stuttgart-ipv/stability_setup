@@ -22,13 +22,15 @@ build/
 *.o
 *.a
 *.out
-*.exe # For any host-side utilities compiled on Windows
+# For any host-side utilities compiled on Windows
+*.exe
 
 # ESP-IDF specific build outputs
 *.bin
 *.elf
 *.map
-flasher_args.json # Generated in build directory
+# Generated in build directory
+flasher_args.json
 sdkconfig.old
 sdkconfig
 
@@ -77,6 +79,7 @@ Desktop.ini
 *.suo       # Visual Studio Solution User Options
 *.sln.docstates # Visual Studio
 
-secrets.env # Environment variables file, should not be committed
+# Environment variables file, should not be committed
+secrets.env
 
 .vscode/settings.json

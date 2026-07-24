@@ -199,6 +199,7 @@ EventGroupHandle_t wifi_get_event_group(void)
 /* Build the HTML page */
 static uint8_t ledPW01 = 0;   // 0–100 %
 static uint8_t ledPW02 = 0;   // 0–100 %
+static float set_light_intensity = 0.0f;   // commanded intensity, average of ledPW01/ledPW02 (0-100 %)
 
 // static void build_html(char *buf, size_t len)
 // {
@@ -312,6 +313,9 @@ static esp_err_t set_power_handler(httpd_req_t *req)
         ledPW02 = v;
         led_power_control(1, 100, ledPW02);
     }
+
+    set_light_intensity = (ledPW01 + ledPW02) / 2.0f;
+    ESP_LOGI(TAG, "set_light_intensity updated: %.2f", set_light_intensity);
 
     httpd_resp_sendstr(req, "OK");
     return ESP_OK;
@@ -514,12 +518,12 @@ void register_task(void *pvParameters)
     }
 }
 
-void send_to_influx(float temp, float light)
+void send_to_influx(float temperature, float voltage, float current, float set_intensity, float measured_light_intensity)
 {
     //checl influx_url and influx_token
     ESP_LOGI(TAG, "influx_url: %s", influx_url);
     ESP_LOGI(TAG, "influx_token: %s", influx_token);
-    
+
     if (influx_url == NULL || influx_url[0] == '\0' ||
         influx_token == NULL || influx_token[0] == '\0') {
         ESP_LOGE(TAG, "Influx URL/token not configured, skipping send");
@@ -530,8 +534,9 @@ void send_to_influx(float temp, float light)
 
     // InfluxDB Line Protocol
     snprintf(post_data, sizeof(post_data),
-             "simulator_data,sensor=" DEVICE_ID " temperature=%.2f,light=%.2f",
-             temp, light);
+             "simulator_data,sensor=" DEVICE_ID
+             " temperature=%.2f,voltage=%.2f,current=%.2f,set_light_intensity=%.2f,measured_light_intensity=%.2f",
+             temperature, voltage, current, set_intensity, measured_light_intensity);
 
     esp_http_client_config_t config = {
         .url = influx_url,
@@ -575,7 +580,8 @@ void influxdb_task(void *pvParameters)
             // This code ONLY runs when triggered
             printf("Trigger received! Performing task...\n");
 
-            send_to_influx(25.0, 100.0); // TODO: replace with actual temperature and light values
+            // TODO: replace temperature, voltage, current and measured_light_intensity with actual sensor readings
+            send_to_influx(25.0, 0.0, 0.0, set_light_intensity, 100.0);
 
             // wait 1 minute
             vTaskDelay(pdMS_TO_TICKS(60000));

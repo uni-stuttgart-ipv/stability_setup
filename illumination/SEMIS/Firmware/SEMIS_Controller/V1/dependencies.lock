@@ -24,5 +24,5 @@ dependencies:
 direct_dependencies:
 - esp-idf-lib/max31865
 manifest_hash: 5d5a5ea7b605491a015931e5012732402de65d492791943dbc60998772caf506
-target: esp32c6
+target: esp32
 version: 3.0.0
