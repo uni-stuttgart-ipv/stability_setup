@@ -304,14 +304,16 @@ static esp_err_t set_power_handler(httpd_req_t *req)
     uint8_t v;
 
     if (get_query_u8(req, "ch0", &v) == 0) {
-        ESP_LOGI(TAG, "ch0 value: %d", v);
+        
         ledPW01 = v;
         led_power_control(0, 100, ledPW01);
+        ESP_LOGI(TAG, "ch0 value: %d", v);
     }
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for 1 second to allow the first LED to stabilize
     if (get_query_u8(req, "ch1", &v) == 0) {
-        ESP_LOGI(TAG, "ch1 value: %d", v);
         ledPW02 = v;
         led_power_control(1, 100, ledPW02);
+        ESP_LOGI(TAG, "ch1 value: %d", v);
     }
 
     set_light_intensity = (ledPW01 + ledPW02) / 2.0f;
