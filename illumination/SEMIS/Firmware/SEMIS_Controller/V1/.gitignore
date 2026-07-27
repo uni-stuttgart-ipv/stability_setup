@@ -83,3 +83,5 @@ Desktop.ini
 secrets.env
 
 .vscode/settings.json
+
+components/html_helper/config.h
