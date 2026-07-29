@@ -1,9 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query
-from app.schemas import Item
-from typing import List, Optional
-from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
+import asyncio
+import json
 import os
+
 from dotenv import load_dotenv
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
+from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
+from typing import List, Optional
+
+from app.schemas import Item
 
 router = APIRouter()
 
@@ -38,18 +43,9 @@ async def create_item(item: Item):
     return item
 
 
-@router.get("/influx/latest/{measurement}")
-async def get_latest_influx_measurement(
-    measurement: str,
-    bucket: str = Query(..., description="InfluxDB bucket name"),
-    sensor: Optional[str] = Query(None, description="Filter to a single sensor/simulator, e.g. 'solar_simulator_01'"),
-    limit: int = Query(1, ge=1, le=20),
-):
-    """Return the most recent row(s) from an InfluxDB measurement as JSON for the UI."""
-    try:
-        client_kwargs = get_influx_client_kwargs()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+async def _fetch_latest_rows(measurement: str, bucket: str, sensor: Optional[str], limit: int) -> list[dict]:
+    """Query InfluxDB and return the most recent `limit` rows for a measurement (optionally filtered by sensor)."""
+    client_kwargs = get_influx_client_kwargs()
 
     params = {"bucket": bucket, "measurement": measurement, "rowLimit": limit}
     sensor_filter = ""
@@ -67,18 +63,31 @@ async def get_latest_influx_measurement(
           |> limit(n: rowLimit)
     """
 
-    try:
-        async with InfluxDBClientAsync(**client_kwargs) as client:
-            query_api = client.query_api()
-            tables = await query_api.query(query=flux_query, params=params)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Failed to query InfluxDB: {exc}") from exc
+    async with InfluxDBClientAsync(**client_kwargs) as client:
+        query_api = client.query_api()
+        tables = await query_api.query(query=flux_query, params=params)
 
-    rows = [
+    return [
         {k: v for k, v in record.values.items() if k not in ("result", "table", "_start", "_stop")}
         for table in tables
         for record in table.records
     ]
+
+
+@router.get("/influx/latest/{measurement}")
+async def get_latest_influx_measurement(
+    measurement: str,
+    bucket: str = Query(..., description="InfluxDB bucket name"),
+    sensor: Optional[str] = Query(None, description="Filter to a single sensor/simulator, e.g. 'solar_simulator_01'"),
+    limit: int = Query(1, ge=1, le=20),
+):
+    """Return the most recent row(s) from an InfluxDB measurement as JSON for the UI."""
+    try:
+        rows = await _fetch_latest_rows(measurement, bucket, sensor, limit)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to query InfluxDB: {exc}") from exc
 
     if not rows:
         sensor_detail = f" for sensor '{sensor}'" if sensor else ""
@@ -91,3 +100,44 @@ async def get_latest_influx_measurement(
         "count": len(rows),
         "values": rows[0],
     }
+
+
+@router.get("/influx/stream/{measurement}")
+async def stream_latest_influx_measurement(
+    request: Request,
+    measurement: str,
+    bucket: str = Query(..., description="InfluxDB bucket name"),
+    sensor: Optional[str] = Query(None, description="Filter to a single sensor/simulator, e.g. 'solar_simulator_01'"),
+    interval_seconds: int = Query(30, ge=5, le=3600, description="Polling interval in seconds"),
+):
+    """Server-Sent Events stream: pushes the latest measurement row every `interval_seconds`."""
+
+    async def event_generator():
+        while True:
+            if await request.is_disconnected():
+                break
+
+            try:
+                rows = await _fetch_latest_rows(measurement, bucket, sensor, 1)
+                if rows:
+                    payload = {
+                        "measurement": measurement,
+                        "bucket": bucket,
+                        "sensor": sensor,
+                        "values": rows[0],
+                    }
+                else:
+                    payload = {"error": f"No data found for measurement '{measurement}' in bucket '{bucket}'"}
+            except RuntimeError as exc:
+                payload = {"error": str(exc)}
+            except Exception as exc:
+                payload = {"error": f"Failed to query InfluxDB: {exc}"}
+
+            yield f"data: {json.dumps(payload, default=str)}\n\n"
+            await asyncio.sleep(interval_seconds)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
