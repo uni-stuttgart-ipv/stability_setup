@@ -1,0 +1,21 @@
+.parameters-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.parameters-table th,
+.parameters-table td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.parameters-table th {
+  background: var(--surface-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}

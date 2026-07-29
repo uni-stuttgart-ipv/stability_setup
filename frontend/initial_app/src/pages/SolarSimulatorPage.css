@@ -1,0 +1,48 @@
+.section {
+  margin: 1.5rem 0;
+}
+
+.chart-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.intensity-apply-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+.intensity-apply-row button {
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.intensity-apply-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.apply-status {
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.apply-status--applying {
+  color: var(--text-muted);
+}
+
+.apply-status--applied {
+  color: #2fb344;
+}
+
+.apply-status--failed {
+  color: #e03131;
+}
