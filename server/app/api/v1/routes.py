@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -141,3 +142,99 @@ async def stream_latest_influx_measurement(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
+
+
+async def _fetch_field_history(
+    measurement: str,
+    bucket: str,
+    sensor: Optional[str],
+    influx_field: str,
+    response_key: str,
+    start: datetime,
+    end: datetime,
+) -> list[dict]:
+    """Query InfluxDB for a single field's time series between start and end (optionally filtered by sensor)."""
+    client_kwargs = get_influx_client_kwargs()
+
+    params = {
+        "bucket": bucket,
+        "measurement": measurement,
+        "field": influx_field,
+        "start": start,
+        "end": end,
+    }
+    sensor_filter = ""
+    if sensor:
+        params["sensor"] = sensor
+        sensor_filter = "and r.sensor == sensor"
+
+    flux_query = f"""
+        from(bucket: bucket)
+          |> range(start: start, stop: end)
+          |> filter(fn: (r) => r._measurement == measurement and r._field == field {sensor_filter})
+          |> sort(columns: ["_time"])
+    """
+
+    async with InfluxDBClientAsync(**client_kwargs) as client:
+        query_api = client.query_api()
+        tables = await query_api.query(query=flux_query, params=params)
+
+    return [
+        {
+            "timestamp": record.get_time(),
+            response_key: record.get_value(),
+            "sensor": record.values.get("sensor"),
+        }
+        for table in tables
+        for record in table.records
+    ]
+
+
+def _default_history_range(start: Optional[datetime], end: Optional[datetime]) -> tuple[datetime, datetime]:
+    range_end = end or datetime.now(timezone.utc)
+    range_start = start or (range_end - timedelta(hours=24))
+    return range_start, range_end
+
+
+@router.get("/influx/measurement/history/temperature")
+async def get_temperature_history(
+    measurement: str = Query(..., description="InfluxDB measurement name"),
+    bucket: str = Query(..., description="InfluxDB bucket name"),
+    sensor: Optional[str] = Query(None, description="Filter to a single sensor/simulator, e.g. 'solar_simulator_01'"),
+    start: Optional[datetime] = Query(None, description="Range start (ISO 8601). Defaults to 24h before `end`."),
+    end: Optional[datetime] = Query(None, description="Range end (ISO 8601). Defaults to now."),
+):
+    """Return a temperature time series (timestamp + sensor + temperature) for graphing."""
+    range_start, range_end = _default_history_range(start, end)
+
+    try:
+        rows = await _fetch_field_history(measurement, bucket, sensor, "temperature", "temperature", range_start, range_end)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to query InfluxDB: {exc}") from exc
+
+    return {"measurements": rows}
+
+
+@router.get("/influx/measurement/history/intensity")
+async def get_intensity_history(
+    measurement: str = Query(..., description="InfluxDB measurement name"),
+    bucket: str = Query(..., description="InfluxDB bucket name"),
+    sensor: Optional[str] = Query(None, description="Filter to a single sensor/simulator, e.g. 'solar_simulator_01'"),
+    start: Optional[datetime] = Query(None, description="Range start (ISO 8601). Defaults to 24h before `end`."),
+    end: Optional[datetime] = Query(None, description="Range end (ISO 8601). Defaults to now."),
+):
+    """Return a measured-light-intensity time series (timestamp + sensor + measured_intensity) for graphing."""
+    range_start, range_end = _default_history_range(start, end)
+
+    try:
+        rows = await _fetch_field_history(
+            measurement, bucket, sensor, "measured_light_intensity", "measured_intensity", range_start, range_end
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to query InfluxDB: {exc}") from exc
+
+    return {"measurements": rows}

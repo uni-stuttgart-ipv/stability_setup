@@ -1,18 +1,16 @@
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import BackLink from '../components/layout/BackLink'
+import Page from '../components/layout/Page'
 
 function MeasurementPage() {
   const { setupId } = useParams<{ setupId: string }>()
 
   return (
-    <div className="page">
-      {setupId && (
-        <Link to={`/setups/${setupId}`} className="back-link">
-          ← Back to setup
-        </Link>
-      )}
+    <Page>
+      {setupId && <BackLink to={`/setups/${setupId}`}>← Back to setup</BackLink>}
       <h1>Measurement</h1>
       <p>Coming soon.</p>
-    </div>
+    </Page>
   )
 }
 

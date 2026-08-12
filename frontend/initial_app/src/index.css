@@ -1,3 +1,9 @@
+/* Preflight is intentionally omitted: this app has no CSS reset today and
+   relies on native element defaults (headings, paragraphs, buttons). Pulling
+   in just the theme + utility layers keeps that baseline untouched. */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
 :root {
   --bg: #f7f7f9;
   --surface: #ffffff;
@@ -6,6 +12,9 @@
   --text: #1b1c1f;
   --text-muted: #6b6d75;
   --accent: #5c5ce0;
+  --online: #2fb344;
+  --offline: #9aa0a6;
+  --error: #e03131;
 
   color-scheme: light dark;
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -23,6 +32,19 @@
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-online: var(--online);
+  --color-offline: var(--offline);
+  --color-error: var(--error);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -38,10 +60,4 @@ h2,
 h3,
 h4 {
   color: var(--text);
-}
-
-.page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
 }
