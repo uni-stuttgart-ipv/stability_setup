@@ -1,7 +1,7 @@
 import apiClient, { API_BASE_URL } from './client'
 
-const MEASUREMENT = 'simulator_data'
-const BUCKET = 'stability_test'
+export const MEASUREMENT = 'simulator_data'
+export const BUCKET = 'stability_test'
 
 export interface InfluxValues {
   temperature?: number

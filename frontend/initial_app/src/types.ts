@@ -18,3 +18,27 @@ export interface SolarSimulatorReading {
   voltage: number
   current: number
 }
+
+export interface TimeSeriesPoint {
+  timestamp: string
+  /** null means the sensor didn't report a reading at this timestamp. */
+  value: number | null
+}
+
+export type TimeRangePresetKey =
+  | '1m'
+  | '5m'
+  | '15m'
+  | '1h'
+  | '3h'
+  | '6h'
+  | '12h'
+  | '24h'
+  | 'custom'
+
+export interface TimeRange {
+  preset: TimeRangePresetKey
+  from: Date
+  to: Date
+  label: string
+}

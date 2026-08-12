@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchSetups } from '../api/mockApi'
 import SetupCard from '../components/cards/SetupCard'
+import Page from '../components/layout/Page'
 import type { Setup } from '../types'
-import './AllSetupsHomePage.css'
 
 function AllSetupsHomePage() {
   const navigate = useNavigate()
@@ -24,18 +24,18 @@ function AllSetupsHomePage() {
   }, [])
 
   return (
-    <div className="page">
+    <Page>
       <h1>All Setups</h1>
       {loading ? (
         <p>Loading setups…</p>
       ) : (
-        <div className="setup-grid">
+        <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
           {setups.map((setup) => (
             <SetupCard key={setup.id} setup={setup} onClick={() => navigate(`/setups/${setup.id}`)} />
           ))}
         </div>
       )}
-    </div>
+    </Page>
   )
 }
 

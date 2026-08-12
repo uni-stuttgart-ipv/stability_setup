@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import './IntensitySlider.css'
 
 interface IntensitySliderProps {
   value: number
@@ -28,10 +27,12 @@ function IntensitySlider({ value, onChange, disabled }: IntensitySliderProps) {
   }
 
   return (
-    <div className="intensity-slider">
-      <label htmlFor="light-intensity">Light Intensity</label>
-      <div className="intensity-slider__row">
-        <div className="intensity-slider__track">
+    <div className="flex max-w-[420px] flex-col gap-2">
+      <label htmlFor="light-intensity" className="text-[0.95rem]">
+        Light Intensity
+      </label>
+      <div className="flex items-center gap-[0.8rem]">
+        <div className="flex min-w-0 flex-1 flex-col gap-[0.3rem]">
           <input
             id="light-intensity"
             type="range"
@@ -41,16 +42,16 @@ function IntensitySlider({ value, onChange, disabled }: IntensitySliderProps) {
             value={value}
             disabled={disabled}
             onChange={(event) => onChange(Number(event.target.value))}
+            className="w-full accent-accent"
           />
-          <div className="intensity-slider__scale">
+          <div className="flex justify-between text-[0.75rem] text-text-muted">
             <span>0</span>
             <span>100</span>
           </div>
         </div>
-        <div className="intensity-slider__input-group">
+        <div className="flex items-center gap-[0.35rem]">
           <input
             type="number"
-            className="intensity-slider__input"
             min={0}
             max={100}
             step={1}
@@ -58,8 +59,9 @@ function IntensitySlider({ value, onChange, disabled }: IntensitySliderProps) {
             disabled={disabled}
             onChange={(event) => handleInputChange(event.target.value)}
             onBlur={() => setInputText(String(value))}
+            className="w-[4.2rem] rounded-md border border-border bg-surface px-[0.4rem] py-[0.3rem] text-right text-[0.9rem] text-text"
           />
-          <span className="intensity-slider__unit">%</span>
+          <span className="text-[0.85rem] text-text-muted">%</span>
         </div>
       </div>
     </div>

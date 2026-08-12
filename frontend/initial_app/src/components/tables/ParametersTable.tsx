@@ -1,5 +1,4 @@
 import type { SolarSimulatorReading } from '../../types'
-import './ParametersTable.css'
 
 type ReadingRow = Partial<Record<keyof SolarSimulatorReading, number>>
 
@@ -17,11 +16,16 @@ const COLUMNS: { key: keyof SolarSimulatorReading; label: string; unit: string; 
 
 function ParametersTable({ reading }: ParametersTableProps) {
   return (
-    <table className="parameters-table">
+    <table className="w-full border-collapse">
       <thead>
         <tr>
           {COLUMNS.map((column) => (
-            <th key={column.key}>{column.label.toUpperCase()}</th>
+            <th
+              key={column.key}
+              className="whitespace-nowrap border border-border bg-surface-muted px-[0.9rem] py-[0.6rem] text-left text-[0.72rem] font-semibold tracking-[0.03em] text-text-muted"
+            >
+              {column.label.toUpperCase()}
+            </th>
           ))}
         </tr>
       </thead>
@@ -30,7 +34,12 @@ function ParametersTable({ reading }: ParametersTableProps) {
           {COLUMNS.map((column) => {
             const value = reading?.[column.key]
             return (
-              <td key={column.key}>{value != null ? `${value.toFixed(column.digits)} ${column.unit}` : '—'}</td>
+              <td
+                key={column.key}
+                className="whitespace-nowrap border border-border px-[0.9rem] py-[0.6rem] text-left text-[0.85rem]"
+              >
+                {value != null ? `${value.toFixed(column.digits)} ${column.unit}` : '—'}
+              </td>
             )
           })}
         </tr>
