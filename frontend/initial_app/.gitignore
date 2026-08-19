@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+#ignore ui scheduling txt file
+UI_SCHEDULING.txt

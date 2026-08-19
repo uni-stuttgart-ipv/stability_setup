@@ -40,3 +40,8 @@ export function buildCustomRange(from: Date, to: Date): TimeRange {
 }
 
 export const DEFAULT_TIME_RANGE_PRESET: Exclude<TimeRangePresetKey, 'custom'> = '15m'
+
+export function toLocalInputValue(date: Date): string {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}

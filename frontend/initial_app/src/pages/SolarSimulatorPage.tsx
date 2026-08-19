@@ -9,8 +9,10 @@ import IntensitySlider from '../components/controls/IntensitySlider'
 import ParametersTable from '../components/tables/ParametersTable'
 import BackLink from '../components/layout/BackLink'
 import Page from '../components/layout/Page'
+import ManageExperimentModal from '../components/experiment/ManageExperimentModal'
 import { useSolarSimulatorStream } from '../hooks/useSolarSimulatorStream'
 import type { Setup, TimeRange } from '../types'
+import { deviceIdForSetup } from '../utils/device'
 import { DEFAULT_TIME_RANGE_PRESET, resolvePresetRange } from '../utils/timeRange'
 import { setIntensitySolar, type IntensityRequest } from "../api/solarSimulatorApi";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
@@ -39,17 +41,16 @@ function SolarSimulatorPage() {
   const [appliedIntensity, setAppliedIntensity] = useState(0)
   const [applyStatus, setApplyStatus] = useState<ApplyStatus>('idle')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [temperatureRange, setTemperatureRange] = useState<TimeRange>(() =>
     resolvePresetRange(DEFAULT_TIME_RANGE_PRESET),
   )
   const [intensityRange, setIntensityRange] = useState<TimeRange>(() =>
     resolvePresetRange(DEFAULT_TIME_RANGE_PRESET),
   )
+  const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false)
 
-  const deviceId = useMemo(() => {
-    const setupNumber = setupId?.match(/\d+/)?.[0]
-    return setupNumber ? `solar_simulator_${setupNumber}` : undefined
-  }, [setupId])
+  const deviceId = useMemo(() => (setupId ? deviceIdForSetup(setupId) : undefined), [setupId])
 
   const temperatureHistoryQuery = useQuery({
     queryKey: ['temperatureHistory', deviceId, temperatureRange.from.getTime(), temperatureRange.to.getTime()],
@@ -68,15 +69,22 @@ function SolarSimulatorPage() {
   useEffect(() => {
     if (!setupId || !deviceId) return
     let cancelled = false
-    Promise.all([fetchSetupById(setupId), fetchLatestInfluxValues(deviceId)]).then(([setupData, values]) => {
-      if (cancelled) return
-      setSetup(setupData ?? null)
-      setLiveReading(mapValuesToReading(values))
-      const initialIntensity = values.set_light_intensity ?? 0
-      setPendingIntensity(initialIntensity)
-      setAppliedIntensity(initialIntensity)
-      setLoading(false)
-    })
+    Promise.all([fetchSetupById(setupId), fetchLatestInfluxValues(deviceId)])
+      .then(([setupData, values]) => {
+        if (cancelled) return
+        setSetup(setupData ?? null)
+        setLiveReading(mapValuesToReading(values))
+        const initialIntensity = values.set_light_intensity ?? 0
+        setPendingIntensity(initialIntensity)
+        setAppliedIntensity(initialIntensity)
+        setLoading(false)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('Failed to load solar simulator data:', error)
+        setLoadError(true)
+        setLoading(false)
+      })
     return () => {
       cancelled = true
     }
@@ -115,6 +123,18 @@ function SolarSimulatorPage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <Page>
+        {setupId && <BackLink to={`/setups/${setupId}`}>← Setup</BackLink>}
+        <p className="text-error">
+          Couldn't reach the backend. Check that the API server is running and reachable from this device, then
+          reload the page.
+        </p>
+      </Page>
+    )
+  }
+
   const tableReading = {
     temperature: liveReading?.temperature,
     setLightIntensity: appliedIntensity,
@@ -130,7 +150,7 @@ function SolarSimulatorPage() {
 
       <section className="my-6">
         <IntensitySlider value={pendingIntensity} onChange={setPendingIntensity} />
-        <div className="mt-3 flex items-center gap-[0.9rem]">
+        <div className="mt-3 flex flex-wrap items-center gap-[0.9rem]">
           <button
             type="button"
             onClick={handleApplyIntensity}
@@ -138,6 +158,13 @@ function SolarSimulatorPage() {
             className="cursor-pointer rounded-lg border border-border bg-accent px-[1.1rem] py-2 text-[0.9rem] text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             Set Intensity
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsExperimentModalOpen(true)}
+            className="cursor-pointer rounded-lg border border-border bg-surface px-[1.1rem] py-2 text-[0.9rem] text-text hover:bg-surface-muted"
+          >
+            Manage Experiment
           </button>
           <span className={`min-h-[1.2em] text-[0.85rem] ${APPLY_STATUS_CLASS[applyStatus]}`}>
             {APPLY_STATUS_LABEL[applyStatus]}
@@ -182,6 +209,14 @@ function SolarSimulatorPage() {
           </div>
         </div>
       </section>
+
+      {isExperimentModalOpen && deviceId && (
+        <ManageExperimentModal
+          deviceId={deviceId}
+          deviceLabel={`${setup?.name ?? 'Setup'} - ${deviceId}`}
+          onClose={() => setIsExperimentModalOpen(false)}
+        />
+      )}
     </Page>
   )
 }

@@ -1,6 +1,10 @@
 import axios from "axios";
 
-export const API_BASE_URL = "http://127.0.0.1:8000";
+// Use whatever host the page itself was loaded from (localhost, a LAN IP,
+// etc.) instead of hardcoding 127.0.0.1 — that only ever resolves to the
+// device making the request, which breaks API calls from any other device
+// on the network.
+export const API_BASE_URL = `http://${window.location.hostname}:8000`;
 
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/`,
