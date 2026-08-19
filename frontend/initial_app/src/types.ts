@@ -42,3 +42,37 @@ export interface TimeRange {
   to: Date
   label: string
 }
+
+export interface ExperimentAction {
+  id: string
+  setIntensityPercent: number
+  durationHours: number
+}
+
+export type BlockRepeatMode = 'once' | 'repeat'
+
+export interface ExperimentBlock {
+  id: string
+  repeatMode: BlockRepeatMode
+  repeatCount: number
+  actions: ExperimentAction[]
+}
+
+export interface ExperimentDraft {
+  name: string
+  deviceId: string
+  startTime: string
+  endTime: string
+  blocks: ExperimentBlock[]
+}
+
+export interface ExperimentPayload {
+  name: string
+  device_id: string
+  start_time: string
+  end_time: string
+  blocks: {
+    repeat: number
+    actions: { set_intensity_percent: number; duration_hours: number }[]
+  }[]
+}

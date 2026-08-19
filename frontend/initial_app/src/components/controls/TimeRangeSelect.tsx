@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { TimeRange } from '../../types'
-import { TIME_RANGE_PRESETS, buildCustomRange, resolvePresetRange } from '../../utils/timeRange'
+import { TIME_RANGE_PRESETS, buildCustomRange, resolvePresetRange, toLocalInputValue } from '../../utils/timeRange'
 
 interface TimeRangeSelectProps {
   value: TimeRange
   onChange: (range: TimeRange) => void
-}
-
-function toLocalInputValue(date: Date): string {
-  const offset = date.getTimezoneOffset() * 60_000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
 function TimeRangeSelect({ value, onChange }: TimeRangeSelectProps) {
