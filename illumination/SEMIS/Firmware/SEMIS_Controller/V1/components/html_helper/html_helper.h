@@ -3,8 +3,7 @@
 #include "freertos/idf_additions.h"
 #endif
 
-#define SERVER_URL "http://10.27.234.22:8000"
-#define DEVICE_ID "solar_simulator_02"
+#include "config.h"
 #define WIFI_CONNECTED_BIT BIT0
 extern SemaphoreHandle_t xHeartbeatSemaphore;
 extern SemaphoreHandle_t xInfluxSemaphore;

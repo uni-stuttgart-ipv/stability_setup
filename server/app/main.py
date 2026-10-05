@@ -13,6 +13,9 @@ import socket
 from app.schemas import Registration, SetRequest , Heartbeat , ESPAlert
 import requests
 import httpx
+from fastapi.middleware.cors import CORSMiddleware
+
+
 
 
 # This function runs in the background and checks the last seen time of each device in the devices dictionary. If a device has not been seen for more than the OFFLINE_THRESHOLD, it is marked as offline. Otherwise, it is marked as online. This allows us to keep track of which devices are currently online and which are offline based on their heartbeat signals.
@@ -49,6 +52,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="FPI Boilerplate", version="0.1.0" , lifespan=lifespan)
 
 app.include_router(api_router, prefix="/api/v1")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    # Also allow the Vite dev server when it's opened from another device on
+    # the same LAN/hotspot (e.g. http://10.240.147.22:5173), not just localhost.
+    allow_origin_regex=r"http://(127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}):5173",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 devices = {}
 
