@@ -5,13 +5,16 @@ from pathlib import Path
 from app.email_sender import EmailSender
 from app.config import email_settings
 from fastapi import FastAPI
-from app.api.v1.routes import router as api_router
+from app.api.v1 import router as api_router
+from app.database import engine, Base
+from app import models  # noqa: F401  # registers Experiment/ScheduleEvent with Base.metadata
+from app.devices import devices, OFFLINE_THRESHOLD, DeviceNotRegisteredError, send_intensity
+from app.scheduler import scheduler
 from pydantic import BaseModel
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi import Request
 import socket
 from app.schemas import Registration, SetRequest , Heartbeat , ESPAlert
-import requests
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -45,8 +48,12 @@ async def lifespan(app: FastAPI):
     # declare the devices dictionary as global to be used in the monitor_devices function
     # Start the device monitoring task
     # print("Starting the app")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     asyncio.create_task(monitor_devices())
+    scheduler.start()
     yield
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title="FPI Boilerplate", version="0.1.0" , lifespan=lifespan)
@@ -62,13 +69,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-devices = {}
-
-# Threshold for considering a device offline if it hasn't sent a heartbeat in the last X minutes. This can be adjusted based on the expected frequency of heartbeats from the devices.
-OFFLINE_THRESHOLD = timedelta(seconds=120) # 2 minutes
-
-
 
 @app.get("/")
 async def root():
@@ -116,32 +116,15 @@ async def set(device_id: str, channel: str, intensity: int):
 
     print(f"Setting channel {channel} to intensity {intensity}")
 
-    # retrieve the device IP from the registered devices
-    ip = devices[device_id]
-
-    #debug print
-    print("ip is ", ip)
-
-    # make a request to the device to set the intensity : using get request
-    # the request is made to the device's IP with the endpoint /set and query parameters ch0 or ch1 depending on the channel and intensity as the value
-    # request parameters example : http://device_ip/set?ch0=50 or http://device_ip/set?ch1=50 or http://device_ip/set?ch0=50&ch1=50
     try:
-        # below code is an io bound operation so can be made asynchronous using httpx library instead of requests library for better performance and scalability
-        response = requests.get(
-
-            f"http://{ip['ip']}/set",
-
-            params={
-                "ch0": intensity if channel == "ch0" else None,
-                "ch1": intensity if channel == "ch1" else None,
-            },
-
-            timeout = 30
+        await send_intensity(
+            device_id,
+            ch0=intensity if channel == "ch0" else None,
+            ch1=intensity if channel == "ch1" else None,
         )
+        return {"status": "ok"}
 
-        return {"status": "ok", "response": response.status_code}
-
-    except requests.exceptions.RequestException as e:
+    except (DeviceNotRegisteredError, httpx.HTTPError) as e:
         return {
             "status": "error",
             "message": str(e)
@@ -161,29 +144,18 @@ async def set_device(device_id: str, payload: SetRequest):
     #  -ContentType "application/json" `
     #  -Body '{"ch0":25,"ch1":80}'
 
-    if device_id not in devices:
+    try:
+        response_text = await send_intensity(device_id, ch0=payload.ch0, ch1=payload.ch1)
+        return {
+            "esp32_response": response_text
+        }
+
+    except DeviceNotRegisteredError as e:
         return {
             "status": "error",
-            "message": f"Device {device_id} not registered"
+            "message": str(e)
         }
-    
-    ip = devices[device_id]   # FastAPI resolves ESP32 IP
 
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"http://{ip['ip']}/set",
-                params={
-                    "ch0": payload.ch0,
-                    "ch1": payload.ch1
-            },
-            timeout=15
-        )
-
-        return {
-            "esp32_response": response.text
-        }
-    
     except httpx.HTTPError as e:
         return {
             "status": "error",

@@ -6,13 +6,13 @@ import { toLocalInputValue } from '../../utils/timeRange'
 import ExperimentBlockEditor from './ExperimentBlockEditor'
 import ExperimentTimelinePreview from './ExperimentTimelinePreview'
 
-interface ManageExperimentModalProps {
+interface CreateExperimentModalProps {
   deviceId: string
   deviceLabel: string
   onClose: () => void
 }
 
-function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperimentModalProps) {
+function CreateExperimentModal({ deviceId, deviceLabel, onClose }: CreateExperimentModalProps) {
   const [name, setName] = useState('')
   const [startTime, setStartTime] = useState(() => toLocalInputValue(new Date()))
   const [endTime, setEndTime] = useState(() => toLocalInputValue(new Date(Date.now() + 24 * 60 * 60_000)))
@@ -100,6 +100,9 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
       })
       await createExperiment(payload)
       onClose()
+    } catch (error) {
+      console.error('Failed to create experiment:', error)
+      setValidationError("Couldn't save the experiment. Check that the API server is running.")
     } finally {
       setIsSubmitting(false)
     }
@@ -237,4 +240,4 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
   )
 }
 
-export default ManageExperimentModal
+export default CreateExperimentModal

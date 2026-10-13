@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { fetchSetupById } from '../api/mockApi'
 import { fetchLatestInfluxValues, mapValuesToReading, type LiveReading } from '../api/influxApi'
 import { fetchIntensityHistory, fetchTemperatureHistory } from '../api/measurementsApi'
@@ -9,7 +9,7 @@ import IntensitySlider from '../components/controls/IntensitySlider'
 import ParametersTable from '../components/tables/ParametersTable'
 import BackLink from '../components/layout/BackLink'
 import Page from '../components/layout/Page'
-import ManageExperimentModal from '../components/experiment/ManageExperimentModal'
+import CreateExperimentModal from '../components/experiment/CreateExperimentModal'
 import { useSolarSimulatorStream } from '../hooks/useSolarSimulatorStream'
 import type { Setup, TimeRange } from '../types'
 import { deviceIdForSetup } from '../utils/device'
@@ -164,8 +164,14 @@ function SolarSimulatorPage() {
             onClick={() => setIsExperimentModalOpen(true)}
             className="cursor-pointer rounded-lg border border-border bg-surface px-[1.1rem] py-2 text-[0.9rem] text-text hover:bg-surface-muted"
           >
-            Manage Experiment
+            Create Experiment
           </button>
+          <Link
+            to={`/setups/${setupId}/solar-simulator/experiments`}
+            className="rounded-lg border border-border bg-surface px-[1.1rem] py-2 text-[0.9rem] text-text no-underline hover:bg-surface-muted"
+          >
+            Manage Experiments
+          </Link>
           <span className={`min-h-[1.2em] text-[0.85rem] ${APPLY_STATUS_CLASS[applyStatus]}`}>
             {APPLY_STATUS_LABEL[applyStatus]}
           </span>
@@ -211,7 +217,7 @@ function SolarSimulatorPage() {
       </section>
 
       {isExperimentModalOpen && deviceId && (
-        <ManageExperimentModal
+        <CreateExperimentModal
           deviceId={deviceId}
           deviceLabel={`${setup?.name ?? 'Setup'} - ${deviceId}`}
           onClose={() => setIsExperimentModalOpen(false)}

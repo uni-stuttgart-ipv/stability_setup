@@ -1,8 +1,12 @@
-import type { ExperimentPayload } from '../types'
+import apiClient from './client'
+import type { Experiment, ExperimentPayload } from '../types'
 
-// The backend route for this hasn't been decided yet — once it is, replace
-// this body with a real `apiClient.post(...)` call (see solarSimulatorApi.ts
-// for the pattern).
-export async function createExperiment(payload: ExperimentPayload): Promise<void> {
-  console.log('[experiment] payload ready for backend:', payload)
+export async function createExperiment(payload: ExperimentPayload): Promise<Experiment> {
+  const response = await apiClient.post<Experiment>('/api/v1/experiments', payload)
+  return response.data
+}
+
+export async function fetchExperiments(): Promise<Experiment[]> {
+  const response = await apiClient.get<Experiment[]>('/api/v1/experiments')
+  return response.data
 }
