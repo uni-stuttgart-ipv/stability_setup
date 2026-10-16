@@ -65,6 +65,10 @@ async def activate_experiment(experiment_id: str, db: AsyncSession = Depends(get
 
     events = await _pending_events(db, experiment_id)
     experiment.status = ExperimentStatus.ACTIVE
+    # An explicit (re)activation is treated as acknowledgement that an admin has
+    # looked into any prior auto-pause, so clear that signal.
+    experiment.needs_admin = False
+    experiment.failure_reason = None
     await db.commit()
     await db.refresh(experiment)
 
