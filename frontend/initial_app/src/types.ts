@@ -76,3 +76,22 @@ export interface ExperimentPayload {
     actions: { set_intensity_percent: number; duration_hours: number }[]
   }[]
 }
+
+export type ExperimentStatus =
+  | 'ACTIVE'
+  | 'PAUSED'
+  | 'INACTIVE'
+  | 'STOPPING'
+  | 'STOPPED'
+  | 'COMPLETING'
+  | 'COMPLETED'
+
+// Mirrors the backend's ExperimentOut schema.
+export interface Experiment {
+  experiment_id: string
+  experiment_json: ExperimentPayload
+  status: ExperimentStatus
+  needs_admin: boolean
+  failure_reason: string | null
+  created_at: string
+}

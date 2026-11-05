@@ -1,24 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createExperiment } from '../../api/experimentApi'
 import type { ExperimentBlock } from '../../types'
-import { buildExperimentPayload, createBlock, duplicateBlock as cloneBlock } from '../../utils/experiment'
+import {
+  buildExperimentPayload,
+  createBlock,
+  duplicateBlock as cloneBlock,
+  totalExperimentDurationHours,
+} from '../../utils/experiment'
 import { toLocalInputValue } from '../../utils/timeRange'
 import ExperimentBlockEditor from './ExperimentBlockEditor'
 import ExperimentTimelinePreview from './ExperimentTimelinePreview'
 
-interface ManageExperimentModalProps {
+interface CreateExperimentModalProps {
   deviceId: string
   deviceLabel: string
   onClose: () => void
 }
 
-function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperimentModalProps) {
+function CreateExperimentModal({ deviceId, deviceLabel, onClose }: CreateExperimentModalProps) {
   const [name, setName] = useState('')
   const [startTime, setStartTime] = useState(() => toLocalInputValue(new Date()))
-  const [endTime, setEndTime] = useState(() => toLocalInputValue(new Date(Date.now() + 24 * 60 * 60_000)))
   const [blocks, setBlocks] = useState<ExperimentBlock[]>(() => [createBlock()])
   const [validationError, setValidationError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // End time isn't user-set — it's always start time + however long the protocol
+  // below actually takes to run (blocks run back-to-back, repeats included), so it
+  // stays in sync automatically as the start time or the blocks change.
+  const totalDurationHours = useMemo(() => totalExperimentDurationHours(blocks), [blocks])
+  const endTime = useMemo(() => {
+    const start = new Date(startTime)
+    if (!startTime || Number.isNaN(start.getTime())) return ''
+    return toLocalInputValue(new Date(start.getTime() + totalDurationHours * 60 * 60_000))
+  }, [startTime, totalDurationHours])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -73,20 +87,20 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
       setValidationError('Give the experiment a name.')
       return
     }
-    if (!startTime || !endTime) {
-      setValidationError('Set both a start and end time.')
-      return
-    }
-    const start = new Date(startTime)
-    const end = new Date(endTime)
-    if (start.getTime() >= end.getTime()) {
-      setValidationError('Start must be before end.')
+    if (!startTime) {
+      setValidationError('Set a start time.')
       return
     }
     if (blocks.length === 0 || blocks.every((block) => block.actions.length === 0)) {
       setValidationError('Add at least one block with an action.')
       return
     }
+    if (totalDurationHours <= 0) {
+      setValidationError('Every action needs a duration greater than zero.')
+      return
+    }
+    const start = new Date(startTime)
+    const end = new Date(endTime)
 
     setValidationError(null)
     setIsSubmitting(true)
@@ -100,6 +114,9 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
       })
       await createExperiment(payload)
       onClose()
+    } catch (error) {
+      console.error('Failed to create experiment:', error)
+      setValidationError("Couldn't save the experiment. Check that the API server is running.")
     } finally {
       setIsSubmitting(false)
     }
@@ -120,7 +137,7 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="cursor-pointer rounded-md px-2 py-1 text-error hover:bg-surface-muted"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-error bg-error leading-none text-white hover:opacity-85"
           >
             ✕
           </button>
@@ -155,7 +172,6 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
                 <input
                   type="datetime-local"
                   value={startTime}
-                  max={endTime}
                   onChange={(event) => setStartTime(event.target.value)}
                   className="rounded-md border border-border bg-surface px-3 py-2 text-[0.9rem] text-text [font-variant-numeric:tabular-nums]"
                 />
@@ -165,9 +181,8 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
                 <input
                   type="datetime-local"
                   value={endTime}
-                  min={startTime}
-                  onChange={(event) => setEndTime(event.target.value)}
-                  className="rounded-md border border-border bg-surface px-3 py-2 text-[0.9rem] text-text [font-variant-numeric:tabular-nums]"
+                  readOnly
+                  className="cursor-not-allowed rounded-md border border-border bg-surface-muted px-3 py-2 text-[0.9rem] text-text-muted [font-variant-numeric:tabular-nums]"
                 />
               </label>
             </div>
@@ -200,7 +215,7 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
             <button
               type="button"
               onClick={addBlock}
-              className="mt-3 cursor-pointer rounded-md border border-dashed border-border px-4 py-2 text-[0.85rem] text-text-muted hover:border-accent hover:text-accent"
+              className="mt-3 cursor-pointer rounded-md border border-dashed border-border px-4 py-2 text-[0.85rem] text-text hover:border-accent hover:text-accent"
             >
               + Add Block
             </button>
@@ -237,4 +252,4 @@ function ManageExperimentModal({ deviceId, deviceLabel, onClose }: ManageExperim
   )
 }
 
-export default ManageExperimentModal
+export default CreateExperimentModal

@@ -4,3 +4,4 @@ __pycache__/
 .env
 app/trial.py
 app/influx_trial.py
+data/
