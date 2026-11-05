@@ -9,7 +9,7 @@
 # activated — compiling/saving events (app.scheduling) does not register them, so a
 # freshly created INACTIVE experiment never fires real hardware commands.
 
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.base import JobLookupError
@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import AsyncSessionLocal
 from app.devices import send_intensity
 from app.models import Experiment, ExperimentStatus, ScheduleEvent
-from app.timeutils import utc_now_naive
+from app.timeutils import to_utc_naive, utc_now_naive
 
 # A failed event is retried this many times, 30s apart, before the whole experiment
 # is auto-paused and flagged for admin attention.
@@ -78,6 +78,13 @@ async def execute_event(event_id: int) -> None:
         if event is None or event.status != "PENDING":
             return
 
+        # The experiment may have been paused/stopped between this job being
+        # registered and it actually firing (e.g. a /stop request landed in the
+        # same instant); re-check here rather than trusting registration alone.
+        experiment = await db.get(Experiment, event.experiment_id)
+        if experiment is None or experiment.status != ExperimentStatus.ACTIVE:
+            return
+
         event.status = "EXECUTING"
         event.attempt_count += 1
         await db.commit()
@@ -133,3 +140,77 @@ def unregister_events(events: list[ScheduleEvent]) -> None:
             scheduler.remove_job(_job_id(event.id))
         except JobLookupError:
             pass
+
+
+def _completion_job_id(experiment_id: str) -> str:
+    return f"experiment-completion-{experiment_id}"
+
+
+def register_completion(experiment_id: str, end_time: datetime) -> None:
+    """Schedule the end-of-experiment shutdown sequence to run when the experiment's
+    end_time arrives. Safe to call every time an experiment is (re)activated --
+    replace_existing=True makes repeated registration at the same end_time a no-op."""
+    end_time = to_utc_naive(end_time)
+    if end_time <= utc_now_naive():
+        return
+    scheduler.add_job(
+        complete_experiment,
+        trigger="date",
+        run_date=end_time,
+        args=[experiment_id],
+        id=_completion_job_id(experiment_id),
+        replace_existing=True,
+    )
+
+
+def unregister_completion(experiment_id: str) -> None:
+    """Pull the end-of-experiment job for an experiment out of the live scheduler
+    (e.g. on manual pause/stop, where that shutdown already happened a different way)."""
+    try:
+        scheduler.remove_job(_completion_job_id(experiment_id))
+    except JobLookupError:
+        pass
+
+
+async def complete_experiment(experiment_id: str) -> None:
+    """Runs when an experiment's end_time arrives: block any further events, turn the
+    device off, then either mark the experiment COMPLETED (device confirmed off) or
+    PAUSED + needs_admin (the shutdown command itself couldn't be confirmed) -- the
+    same "wait for admin" pattern used when an event exhausts its retries or a manual
+    /stop can't confirm the device turned off."""
+    async with AsyncSessionLocal() as db:
+        experiment = await db.get(Experiment, experiment_id)
+        if experiment is None or experiment.status != ExperimentStatus.ACTIVE:
+            return
+
+        result = await db.execute(
+            select(ScheduleEvent).where(
+                ScheduleEvent.experiment_id == experiment_id,
+                ScheduleEvent.status == "PENDING",
+            )
+        )
+        still_pending = list(result.scalars().all())
+
+        experiment.status = ExperimentStatus.COMPLETING
+        await db.commit()
+        unregister_events(still_pending)
+
+        device_id = experiment.experiment_json["device_id"]
+        try:
+            await send_intensity(device_id, ch0=0, ch1=0)
+        except Exception as exc:
+            experiment.status = ExperimentStatus.PAUSED
+            experiment.needs_admin = True
+            experiment.failure_reason = (
+                f"End-of-experiment shutdown failed to get a confirmation from the device: {exc}"
+            )
+            await db.commit()
+            return
+
+        # Device confirmed off. Already-SUCCESS/FAILED events are left untouched;
+        # anything that never got a chance to fire (normally none, since end_time
+        # lines up with the last action) is marked CANCELLED, not silently dropped.
+        for event in still_pending:
+            event.status = "CANCELLED"
+        experiment.status = ExperimentStatus.COMPLETED
+        await db.commit()

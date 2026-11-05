@@ -24,6 +24,10 @@ class ExperimentStatus(str, Enum):
     ACTIVE = "ACTIVE"
     PAUSED = "PAUSED"
     INACTIVE = "INACTIVE"
+    STOPPING = "STOPPING"
+    STOPPED = "STOPPED"
+    COMPLETING = "COMPLETING"
+    COMPLETED = "COMPLETED"
 
 
 class Experiment(Base):

@@ -41,6 +41,12 @@ export function blockEffectiveDurationHours(block: ExperimentBlock): number {
   return blockCycleDurationHours(block) * cycles
 }
 
+// Mirrors the backend's compile_schedule(): blocks run back-to-back in order, so the
+// experiment's total span is just the sum of each block's effective duration.
+export function totalExperimentDurationHours(blocks: ExperimentBlock[]): number {
+  return blocks.reduce((sum, block) => sum + blockEffectiveDurationHours(block), 0)
+}
+
 export function buildExperimentPayload(draft: ExperimentDraft): ExperimentPayload {
   return {
     name: draft.name.trim(),

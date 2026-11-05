@@ -183,7 +183,7 @@ function ExperimentBlockEditor({
         <button
           type="button"
           onClick={addAction}
-          className="cursor-pointer self-start rounded-md border border-dashed border-border px-3 py-[0.35rem] text-[0.8rem] text-text-muted hover:border-accent hover:text-accent"
+          className="cursor-pointer self-start rounded-md border border-dashed border-border px-3 py-[0.35rem] text-[0.8rem] text-text hover:border-accent hover:text-accent"
         >
           + Add Action
         </button>

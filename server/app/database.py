@@ -1,5 +1,6 @@
 # database.py
 
+import os
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import (
@@ -9,15 +10,21 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = "sqlite+aiosqlite:///./data/solar.db"
+# Overridable so tests/tools can point at an isolated, throwaway database instead of
+# the real dev DB at ./data/solar.db (the same file the frontend's "Manage Experiments"
+# page reads from).
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/solar.db")
 
 # The sqlite driver won't create the parent directory for us.
-Path("data").mkdir(exist_ok=True)
+if DATABASE_URL.startswith("sqlite"):
+    _db_path = DATABASE_URL.split("///", 1)[-1]
+    if _db_path not in (":memory:", ""):
+        Path(_db_path).parent.mkdir(parents=True, exist_ok=True)
 
 # Create database engine
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True
+    echo=os.getenv("DATABASE_ECHO", "true").lower() == "true"
 )
 
 # Create session factory
